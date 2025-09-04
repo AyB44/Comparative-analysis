@@ -2,7 +2,7 @@
 # extract_cognitive_genes.py
 """
 Extract genes for selected GO terms from an EggNOG-mapper .emapper.annotations TSV.
-Minimal, stdlib-only, GitHub-ready.
+Minimal, stdlib-only.
 """
 
 import argparse, csv, re
