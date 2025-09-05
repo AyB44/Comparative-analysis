@@ -11,16 +11,15 @@ from pathlib import Path
 DEFAULT_GO = {
     "GO:0007613": "memory",
     "GO:0007611": "learning",
-    "GO:0048878": "neuron_differentiation",
     "GO:0099536": "synaptic_signaling",
     "GO:0007420": "brain_development",
     "GO:0007399": "nervous_system_development",
     "GO:0050804": "modulation_of_chemical_synaptic_transmission",
-    "GO:0097060": "synapse_organization",
     "GO:0007268": "synaptic_transmission",
 }
+# Compile a regular expression to match GO term patterns
 GO_RE = re.compile(r"GO:\d{7}")
-
+# Load a custom GO term-to-label mapping from a file, or use the default if none is provided
 def load_go_map(go_file: Path | None) -> dict[str, str]:
     if not go_file:
         return dict(DEFAULT_GO)
@@ -33,7 +32,7 @@ def load_go_map(go_file: Path | None) -> dict[str, str]:
             if len(row) < 2: raise ValueError(f"GO map row needs 2 columns: {row}")
             mapping[row[0].strip()] = row[1].strip()
     return mapping
-
+# Main function to extract genes associated with cognitive GO terms from EggNOG annotations
 def main():
     ap = argparse.ArgumentParser(description="Extract cognitive GO genes from EggNOG annotations.")
     ap.add_argument("-a","--annotations", required=True, type=Path, help=".emapper.annotations (TSV)")
@@ -42,15 +41,15 @@ def main():
     ap.add_argument("--go-col", type=int, default=9, help="0-based GO column index (EggNOG v2: 9)")
     ap.add_argument("--gene-col", type=int, default=0, help="0-based gene/query column index")
     args = ap.parse_args()
-
+# Check if the annotations file exists before proceeding
     if not args.annotations.exists():
         raise FileNotFoundError(args.annotations)
-
+   # Load the GO term mapping and prepare data structures for storing results
     go_map = load_go_map(args.go_file)
     target = set(go_map.keys())
     per_go: dict[str, set[str]] = {g: set() for g in target}
     per_gene: dict[str, set[str]] = {}
-
+  # Read the annotations file and extract relevant genes based on GO terms
     with args.annotations.open("r", encoding="utf-8", newline="") as fh:
         reader = csv.reader(fh, delimiter="\t")
         max_idx = max(args.go_col, args.gene_col)
@@ -67,14 +66,14 @@ def main():
             per_gene.setdefault(gene, set()).update(hits)
             for go in hits:
                 per_go[go].add(gene)
-
+# Write gene lists for each GO term to separate files
     args.outdir.mkdir(parents=True, exist_ok=True)
     for go_id, genes in per_go.items():
         label = go_map[go_id]
         out = args.outdir / f"cognitive_genes_{go_id}_{label}.txt"
         out.write_text("\n".join(sorted(genes)) + ("\n" if genes else ""), encoding="utf-8")
         print(f"{go_id} ({label}): {len(genes)} genes → {out}")
-
+# Write a summary file mapping each gene to its matched GO terms and labels
     summary = args.outdir / "cognitive_genes_summary.tsv"
     with summary.open("w", encoding="utf-8", newline="") as out:
         w = csv.writer(out, delimiter="\t")
